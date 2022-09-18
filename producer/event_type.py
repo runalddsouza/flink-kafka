@@ -70,26 +70,21 @@ def get_delay_mapping(e: Enum) -> bool:
 def get_event_mapping(e: Enum):
     if e in turn_over:
         return Possession.TURN_OVER
-    if e == BaseEvent.PASS:
+    elif e == BaseEvent.PASS:
         return Pass
-    if e == Pass.PASS_COMPLETE:
+    elif e == Pass.PASS_COMPLETE:
         return PassComplete
-    if e == Pass.OPPOSITION_FOUL:
+    elif e == Pass.OPPOSITION_FOUL:
         return Pass
-
-    if e == PassComplete.PASS:
+    elif e == PassComplete.PASS:
         return Pass
-    if e == PassComplete.SHOT:
+    elif e == PassComplete.SHOT:
         return Shot
-
-    if e == Shot.SHOT_ON_TARGET:
+    elif e == Shot.SHOT_ON_TARGET:
         return ShotOnTarget
-
-    if e == ShotOnTarget.CORNER:
+    elif e == ShotOnTarget.CORNER:
         return Corner
-
-    if e == Corner.SHOT_ON_TARGET:
+    elif e == Corner.SHOT_ON_TARGET:
         return ShotOnTarget
-
     else:
         raise ValueError('Not found: ' + str(e))
