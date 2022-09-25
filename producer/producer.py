@@ -2,12 +2,10 @@ import json
 import random
 import uuid
 
+from confluent_kafka import Producer
+
 import logger
-import schema
 from parse_args import parse_args
-import pandas as pd
-from confluent_kafka.avro import AvroProducer
-import avro
 
 from stopwatch import Stopwatch
 import time
@@ -20,7 +18,7 @@ from team import Team
 
 
 class FootballEventProducer:
-    def __init__(self, producer, topic_name, log, match_id, home_team, away_team):
+    def __init__(self, producer, topic_name, log, match_id: str, home_team: str, away_team: str):
         self.__attempt = 1
         self.__log = log
         self.producer = producer
@@ -30,14 +28,12 @@ class FootballEventProducer:
         self.duration = 60 * 90
         self.match_id = match_id
 
-    def publish(self, data):
+    def publish(self, key, value):
         try:
-            df = pd.DataFrame([data], columns=schema.event_schema.keys()).astype(schema.event_schema)
-            key = df.iloc[0]["id"]
-            self.producer.produce(topic=self.topic_name, key=key, value=data, on_delivery=self.acked)
+            self.producer.produce(topic=self.topic_name, key=key, value=value, on_delivery=self.acked)
             self.producer.poll(0)
             self.producer.flush()
-            self.__log.info(data)
+            self.__log.info(value)
         except Exception as e:
             self.__log.error("Unknown failure ; Exception: " + str(type(e).__name__) + "  ; message: " + str(e))
 
@@ -65,8 +61,9 @@ class FootballEventProducer:
         while game_timer.duration < self.duration:
             time.sleep(random.randint(3, 6))
             new_event = self.generate_event(e)
-            message = json.loads(json.dumps({
-                "id": str(uuid.uuid4()),
+            key = str(uuid.uuid4())
+            message = json.dumps({
+                "id": key,
                 "event_time": int(time.time() * 1000),
                 "match_id": self.match_id,
                 "home_team": self.home_team,
@@ -76,8 +73,8 @@ class FootballEventProducer:
                 "game_time": self.get_duration(int(game_timer.duration)),
                 "home_possession_time": int(teams.home_timer.duration),
                 "away_possession_time": int(teams.away_timer.duration)
-            }))
-            self.publish(message)
+            }, ensure_ascii=False)
+            self.publish(key, message)
             if get_delay_mapping(new_event):
                 teams.stop_time()
                 time.sleep(random.randint(1, 5))
@@ -99,12 +96,8 @@ if __name__ == '__main__':
     logger = logger.AppLogger(args.log_file).get_logger()
 
     # kafka
-    producer_conf = {'bootstrap.servers': args.bootstrap_servers, 'schema.registry.url': args.schema_registry,
-                     'security.protocol': 'PLAINTEXT'}
+    producer_conf = {'bootstrap.servers': args.bootstrap_servers, 'security.protocol': 'PLAINTEXT'}
     topic = args.topic
-    key_schema = avro.schema.parse('{"type": "string"}')
-    value_schema = avro.schema.parse(json.dumps(schema.avro_dict))
-    avro_producer = AvroProducer(producer_conf, default_value_schema=value_schema, default_key_schema=key_schema)
-
-    app = FootballEventProducer(avro_producer, topic, logger, str(uuid.uuid4()), args.home, args.away)
+    kafka_producer = Producer(producer_conf)
+    app = FootballEventProducer(kafka_producer, topic, logger, str(uuid.uuid4()), args.home, args.away)
     app.start()
