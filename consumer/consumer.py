@@ -26,7 +26,7 @@ if __name__ == '__main__':
         topics=args.topic,
         deserialization_schema=deserialization_schema,
         properties={'bootstrap.servers': args.bootstrap_servers, 'security.protocol': 'PLAINTEXT',
-                    'group.id': 'flink_consumer_11'})
+                    'group.id': 'flink_consumer'})
 
     ds = env.add_source(kafka_consumer)
     ds.key_by(EventKeySelector(), key_type=Types.STRING()).map(MapStats(), output_type=Types.STRING()).print()
