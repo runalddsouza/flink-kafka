@@ -53,8 +53,23 @@ services:
       SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: "zookeeper:2181"
 
   producer:
-    image: python:3.9-slim-buster
+    image: python:3.7-slim-buster
     container_name: producer
+    depends_on:
+      - schema-registry
+      - broker
+      - flink-consumer
+    volumes:
+      - ../:/usr/local/app
+    environment:
+      - PYTHONPATH=$PYTHONPATH:/usr/local/app/
+    command: >
+      bash -c "pip install -r /usr/local/app/requirements.txt &&
+      python /usr/local/app/producer/producer.py --topic FootballMatchEvent --home 'FC Bayern München' --away 'Real Madrid CF' --bootstrap-servers broker:29092 --log-file /usr/local/app.log"
+
+  flink-consumer:
+    build: .
+    container_name: flink-consumer
     depends_on:
       - schema-registry
       - broker
@@ -64,5 +79,5 @@ services:
       - PYTHONPATH=$PYTHONPATH:/usr/local/app/
     command: >
       bash -c "pip install -r /usr/local/app/requirements.txt &&
-      python /usr/local/app/producer/producer.py --topic FootballMatchEvent --home 'FC Bayern München' --away 'Real Madrid CF' --bootstrap-servers broker:29092 --schema-registry http://schema-registry:8081 --log-file /usr/local/app.log"
+      python /usr/local/app/consumer/consumer.py --topic FootballMatchEvent --bootstrap-servers broker:29092 --log-file /usr/local/app.log"
 
